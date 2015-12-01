@@ -1,4 +1,4 @@
-from runit import Weight, RnnLayer
+from runit import RnnLayer
 
 
 class RnnNet(object):

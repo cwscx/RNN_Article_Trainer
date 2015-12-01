@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class Weight(object):
     def __init__(self, in_len, out_len):
         self.w = np.random.rand(out_len, in_len) / np.sqrt(in_len)
