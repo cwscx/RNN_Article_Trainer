@@ -18,17 +18,17 @@ class Weight(object):
 
 class RnnLayer(object):
     def __init__(self, x_len, h_len, y_len, inner_activation, out_activation, w_xh=None, w_hh=None, w_hy=None):
-        self.x = np.zeros(x_len)
-        self.h = np.zeros(h_len)
-        self.y = np.zeros(y_len)
+        self.x = np.zeros(x_len)        # Input
+        self.h = np.zeros(h_len)        # Store f(h_t)
+        self.y = np.zeros(y_len)        # Output
         self.w_xh = w_xh
         self.w_hh = w_hh
         self.w_hy = w_hy
         self.inner_activation = inner_activation
         self.out_activation = out_activation
         self.h_grad = np.zeros(h_len)
-        self.prev = None
-        self.post = None
+        self.prev = None                # t-1
+        self.post = None                # t+1
 
     def create_w(self):
         if self.w_xh is None:
@@ -55,11 +55,15 @@ class RnnLayer(object):
         if len(input_data) != len(self.x):
             raise ValueError('Input dimension not match x!')
         self.x = input_data
+        
+        # h = W_hh * f(h_t-1) + W_hx * x
+        self.h += self.w_xh.dot_prod(input_data)
         if self.prev is not None:
             self.h += self.w_hh.dot_prod(self.prev.h)
-        self.h += self.w_xh.dot_prod(input_data)
+        
+        # y = W_hy * f(h_t)     // Before activated    
         self.h_grad = self.inner_activation.grad(self.h)
-        self.h = self.inner_activation.calc(self.h)
+        self.h = self.inner_activation.calc(self.h)     # h = f(h_t)
         self.y = self.out_activation.calc(self.w_hy.dot_prod(self.h))
 
     def tiny_backward(self, lr, post_h_delta=None, teacher_data=None):
