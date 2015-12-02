@@ -1,3 +1,5 @@
+.idea/
+holmes
 rnn/.idea/*
 rnn/*.pyc
 Read/*.pyc
