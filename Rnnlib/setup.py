@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
         name='rnn',
-        version='0.0.0',
+        version='0.0.1',
         author='Jacob Tao',
         author_email='coolmich00@gmail.com',
         description='recurrent neural network hw4',

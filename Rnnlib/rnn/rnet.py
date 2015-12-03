@@ -31,3 +31,13 @@ class RnnNet(object):
             cur_layer = cur_layer.get_post()
         # finally update weights
         self.head.update_weights()
+
+    def xentroty_err(self, teacher_data):
+        cur_layer = self.head
+        error = 0
+        i = 0
+        while cur_layer is not None:
+            error += cur_layer.xentropy(teacher_data[i])
+            cur_layer = cur_layer.post
+            i += 1
+        return error

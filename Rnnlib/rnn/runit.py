@@ -3,17 +3,21 @@ import numpy as np
 class Weight(object):
     def __init__(self, in_len, out_len):
         self.w = np.random.rand(out_len, in_len) / np.sqrt(in_len)
-        self.delta = np.zeros(self.w)
+        self.delta = np.zeros((out_len, in_len))
 
-    def dot_prod(self, input_data):
-        return np.dot(self.w, input_data)
+    def dot_prod(self, input_data, t=False):
+        if t:
+            return np.dot(self.w.transpose(), input_data)
+        else:
+            return np.dot(self.w, input_data)
 
     def accum_del(self, u_delta, z, lr):
         self.delta += np.dot(u_delta.reshape(len(u_delta), 1), z.reshape(1, len(z))) * lr
 
     def update(self):
+        # print np.max(self.delta)
         self.w += self.delta
-        self.delta = np.zeros(self.w)
+        self.delta = np.zeros((len(self.w), len(self.w[0])))
 
 
 class RnnLayer(object):
@@ -72,7 +76,7 @@ class RnnLayer(object):
         if teacher_data is not None:
             # backprop starting from this time frame
             self.w_hy.accum_del(teacher_data - self.y, self.h, lr)
-            h_delta = self.w_hy.dot_prod(teacher_data - self.y) * self.h_grad
+            h_delta = self.w_hy.dot_prod(teacher_data - self.y, True) * self.h_grad
         else:
             # backprop from the next time frame
             h_delta = self.w_hh.dot_prod(post_h_delta) * self.h_grad
@@ -86,3 +90,5 @@ class RnnLayer(object):
         self.w_hh.update()
         self.w_hy.update()
 
+    def xentropy(self, teacher_vector):
+        return -np.dot(teacher_vector, np.log(self.y))
