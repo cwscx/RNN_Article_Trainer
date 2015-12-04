@@ -2,8 +2,9 @@ import numpy as np
 
 class Weight(object):
     def __init__(self, in_len, out_len):
-        self.w = np.random.rand(out_len, in_len) / np.sqrt(in_len)
+        self.w = np.random.rand(out_len, in_len) / in_len
         self.delta = np.zeros((out_len, in_len))
+        self.historical_delta = 0
 
     def dot_prod(self, input_data, t=False):
         if t:
@@ -11,12 +12,15 @@ class Weight(object):
         else:
             return np.dot(self.w, input_data)
 
-    def accum_del(self, u_delta, z, lr):
-        self.delta += np.dot(u_delta.reshape(len(u_delta), 1), z.reshape(1, len(z))) * lr
+    def accum_del(self, u_delta, z):
+        self.delta += np.dot(u_delta.reshape(len(u_delta), 1), z.reshape(1, len(z)))
 
-    def update(self):
+    def update(self, lr):
         # print np.max(self.delta)
-        self.w += self.delta
+        # print np.min(self.delta)
+        self.historical_delta += self.delta ** 2
+        adjusted_delta = self.delta / (1e-6 + np.sqrt(self.historical_delta))
+        self.w += adjusted_delta * lr
         self.delta = np.zeros((len(self.w), len(self.w[0])))
 
 
@@ -70,25 +74,27 @@ class RnnLayer(object):
         self.h = self.inner_activation.calc(self.h)     # h = f(h_t)
         self.y = self.out_activation.calc(self.w_hy.dot_prod(self.h))
 
-    def tiny_backward(self, lr, post_h_delta=None, teacher_data=None):
+    def tiny_backward(self, backward_times, post_h_delta=None, teacher_data=None):
+        if backward_times <= 0:
+            return
         if post_h_delta is None and teacher_data is None:
             raise ValueError('Cannot backprop, insufficient info given!')
         if teacher_data is not None:
             # backprop starting from this time frame
-            self.w_hy.accum_del(teacher_data - self.y, self.h, lr)
+            self.w_hy.accum_del(teacher_data - self.y, self.h)
             h_delta = self.w_hy.dot_prod(teacher_data - self.y, True) * self.h_grad
         else:
             # backprop from the next time frame
             h_delta = self.w_hh.dot_prod(post_h_delta) * self.h_grad
-            self.w_hh.accum_del(post_h_delta, self.h, lr)
-        self.w_xh.accum_del(h_delta, self.x, lr)
+            self.w_hh.accum_del(post_h_delta, self.h)
+        self.w_xh.accum_del(h_delta, self.x)
         if self.prev is not None:
-            self.prev.tiny_backward(lr, post_h_delta=h_delta)
+            self.prev.tiny_backward(backward_times-1, post_h_delta=h_delta)
 
-    def update_weights(self):
-        self.w_xh.update()
-        self.w_hh.update()
-        self.w_hy.update()
+    def update_weights(self, lr):
+        self.w_xh.update(lr)
+        self.w_hh.update(lr)
+        self.w_hy.update(lr)
 
     def xentropy(self, teacher_vector):
         return -np.dot(teacher_vector, np.log(self.y))
